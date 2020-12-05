@@ -7,7 +7,6 @@ struct UnknownKeyException
 {
 };
 
-// AnyTypeStorage is not thread-safe because nobody asked for
 template <typename T_key>
 class AnyTypeStorage : public NotificationCenter<T_key>
 {
@@ -17,6 +16,8 @@ public:
     template <typename T_value>
     void insertOrAssign(const T_key& key, T_value&& value)
     {
+        std::lock_guard<std::recursive_mutex> lock(this->mMutex);
+
         auto it = mStorage.find(key);
         if (it != mStorage.end())
         {
@@ -40,8 +41,10 @@ public:
     }
 
     template <typename T_value>
-    const T_value& getAs(const T_key& key)
+    T_value getAs(const T_key& key)
     {
+        std::lock_guard<std::recursive_mutex> lock(this->mMutex);
+
         auto it = mStorage.find(key);
         if (it == mStorage.end())
             throw UnknownKeyException();

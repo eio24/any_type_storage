@@ -24,6 +24,6 @@ template<> std::string OperationAddDotToString::operator()(const std::string& va
 struct OperationGetOnlyLastName
 {
     template <typename T>
-    const std::string& operator()(const T& value) { static_assert(FalseValue<T>::value, "not defined"); }
+    std::string operator()(const T& value) { static_assert(FalseValue<T>::value, "not defined"); }
 };
-template<> const std::string& OperationGetOnlyLastName::operator()(const FullName& value) { return value.last_name; }
+template<> std::string OperationGetOnlyLastName::operator()(const FullName& value) { return value.last_name; }

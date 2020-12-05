@@ -49,10 +49,10 @@ private:
     template <typename T>
     struct AnyValue : AnyValueBase
     {
-        T originalValue;
+        typename std::remove_cv<typename std::remove_reference<T>::type>::type originalValue;
 
         AnyValue(T&& v) :
-            AnyValueBase(UniqueForType<T>::pseudoTypeId()),
+            AnyValueBase(UniqueForType<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::pseudoTypeId()),
             originalValue(std::forward<T>(v))
         {
         }

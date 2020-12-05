@@ -21,17 +21,23 @@ class NotificationCenter
 public:
     void attachToSync(IStorageObserver<T>& o)
     {
+        std::lock_guard<std::recursive_mutex> lock(mMutex);
+
         mSyncObservers.push_back(&o);
     }
 
     // observer must detach before destruction
     void attachToAsync(IStorageObserver<T>& o)
     {
+        std::lock_guard<std::recursive_mutex> lock(mMutex);
+
         mAsyncObservers.emplace(&o, std::list<std::future<void>>{});
     }
 
     void detach(IStorageObserver<T>& o)
     {
+        std::unique_lock<std::recursive_mutex> lock(mMutex);
+
         mSyncObservers.remove(&o);
 
         auto it = mAsyncObservers.find(&o);
@@ -39,9 +45,15 @@ public:
         {
             auto& futures = it->second;
 
-            // wait for all working threads for this observer
-            for (auto& f : futures)
-                f.wait();
+            { // unlock mutex while waiting for all working threads for this observer
+              // to avoid deadlock
+                lock.unlock();
+
+                for (auto& f : futures)
+                    f.wait();
+
+                lock.lock();
+            }
 
             mAsyncObservers.erase(it);
         }
@@ -50,6 +62,8 @@ public:
 protected:
     void notifyValueChangedForKey(const T& key)
     {
+        std::lock_guard<std::recursive_mutex> lock(mMutex);
+
         for (auto& pair : mAsyncObservers)
         {
             auto* o = pair.first;
@@ -78,6 +92,8 @@ protected:
         for (auto o : mSyncObservers)
             o->handleValueChangedForKey(key);
     }
+
+    std::recursive_mutex mMutex;
 
 private:
     std::list<IStorageObserver<T>*> mSyncObservers;
